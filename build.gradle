@@ -1,0 +1,33 @@
+import org.apache.tools.ant.filters.*
+
+group 'jobtask'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'java'
+apply plugin: 'application'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile 'io.reactivex.rxjava2:rxjava:2.1.5'
+    compile 'com.google.inject:guice:4.1.0'
+    compile 'org.postgresql:postgresql:9.4-1205-jdbc42'
+    compile 'org.hibernate:hibernate-core:5.2.11.Final'
+    compile 'org.hibernate:hibernate-validator:5.2.2.Final'
+    compile 'org.projectlombok:lombok:1.16.18'
+    compile 'org.slf4j:slf4j-api:1.7.24'
+    compile 'org.slf4j:slf4j-log4j12:1.7.21'
+    testCompile 'junit:junit:4.12'
+}
+
+processResources {
+    def props = new Properties()
+    props.load file('build.properties').newDataInputStream()
+    filter ReplaceTokens, tokens: props
+}
+
+mainClassName = 'jobtask.importer.Application'
