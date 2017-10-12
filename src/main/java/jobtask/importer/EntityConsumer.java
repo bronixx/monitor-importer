@@ -1,7 +1,6 @@
 package jobtask.importer;
 
 import com.google.inject.Inject;
-import com.google.inject.persist.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -23,19 +22,24 @@ public class EntityConsumer implements Subscriber<Model> {
     }
 
     @Override
-    @Transactional
     public void onNext(Model model) {
-        manager.persist(model);
+        manager.getTransaction().begin();
+        try {
+            manager.persist(model);
+            manager.getTransaction().commit();
+        } catch (Exception e) {
+            manager.getTransaction().rollback();
+        }
         subscription.request(1);
     }
 
     @Override
     public void onError(Throwable t) {
-        log.error("Faile to process a model object");
+        log.error("Failed to load a model object", t);
+        subscription.cancel();
     }
 
     @Override
     public void onComplete() {
-        manager.close();
     }
 }

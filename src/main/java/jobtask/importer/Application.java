@@ -24,28 +24,19 @@ public class Application {
     @Inject
     private EntityConsumer consumer;
     
-    private PersistService persistService;
-    
     private final Scheduler scheduler = Schedulers.newThread();
     
     public static void main(String[] args) {
         Application app = new Application();
         Injector injector = Guice.createInjector(new MainModule(), new JpaPersistModule("importer-unit"));
-        app.persistService = injector.getInstance(PersistService.class);
-        app.persistService.start();
+        PersistService persistService = injector.getInstance(PersistService.class);
+        persistService.start();
         injector.injectMembers(app);
         app.start();
-        Runtime.getRuntime().addShutdownHook(new Thread(app::done));
     }
     
     private void start() {
-        persistService.start();
         Worker worker = scheduler.createWorker();
         worker.schedulePeriodically(() -> scanner.scan().subscribe(consumer), 0, 10, TimeUnit.SECONDS);
-    }
-    
-    private void done() {
-        scheduler.shutdown();
-        persistService.stop();
     }
 }

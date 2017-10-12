@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Deque;
 import java.util.LinkedList;
 import java.util.Properties;
@@ -110,11 +111,13 @@ public class SourceScanner {
     }
     
     private void moveFileToProcessed(Path path) throws IOException {
-        Files.move(path, processedDir.resolve(path.getFileName()));
+        Files.move(path, processedDir.resolve(path.getFileName()), StandardCopyOption.REPLACE_EXISTING);
+        log.info("Processed file {}", path);
     }
               
     private void moveFileToRejected(Path path) throws IOException {
-        Files.move(path, rejectedDir.resolve(path.getFileName()));
+        Files.move(path, rejectedDir.resolve(path.getFileName()), StandardCopyOption.REPLACE_EXISTING);
+        log.info("Rejected file {}", path);
     }
               
 }
