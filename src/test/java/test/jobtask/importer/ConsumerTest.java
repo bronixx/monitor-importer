@@ -1,6 +1,7 @@
 package test.jobtask.importer;
 
 import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import jobtask.importer.EntityConsumer;
 import jobtask.importer.Model;
 import jobtask.importer.SourceScanner;
@@ -12,6 +13,7 @@ import org.mockito.Captor;
 import org.mockito.junit.MockitoJUnitRunner;
 
 import javax.persistence.EntityManager;
+import javax.persistence.EntityTransaction;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 
@@ -54,7 +56,11 @@ public class ConsumerTest extends TestBase {
     @Override
     protected void configure() {
         super.configure();
-        bind(EntityConsumer.class).toInstance(spy(new EntityConsumer()));
-        bind(EntityManager.class).toInstance(mock(EntityManager.class));
+        bind(EntityConsumer.class).in(Singleton.class);
+        
+        EntityManager entityManager = mock(EntityManager.class);
+        EntityTransaction entityTx = mock(EntityTransaction.class);
+        when(entityManager.getTransaction()).thenReturn(entityTx);
+        bind(EntityManager.class).toInstance(entityManager);
     }
 }
