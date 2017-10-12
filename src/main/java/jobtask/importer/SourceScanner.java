@@ -3,14 +3,15 @@ package jobtask.importer;
 import com.google.inject.Inject;
 import io.reactivex.BackpressureStrategy;
 import io.reactivex.Flowable;
+import io.reactivex.FlowableOnSubscribe;
 import io.reactivex.schedulers.Schedulers;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
+import javax.validation.Validator;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBElement;
 import javax.xml.bind.JAXBException;
-import javax.xml.bind.UnmarshalException;
 import javax.xml.bind.Unmarshaller;
 import javax.xml.transform.stream.StreamSource;
 import java.io.IOException;
@@ -22,69 +23,95 @@ import java.util.LinkedList;
 import java.util.Properties;
 import java.util.stream.Collectors;
 
+import static jobtask.importer.Application.*;
+
+/**
+ * Сканер исходного каталога. Делает следющее:
+ * <ol>
+ *     <li>Сканирует исходный каталог</li>
+ *     <li>Считывает XML-файлы нужного формата</li>
+ *     <li>Создаёт набор моделей из считанных файлов</li>
+ *     <li>Переносит считанные файлы в другой каталог</li>
+ * </ol>
+ * Искодный каталог и каталог считанных файлов задаются в настройках build.properties перед сборкой.
+ * <pre>{@code
+ *  source.dir = /home/bronixx/workspace/monitor-importer/source;
+ *  processed.dir = /home/bronixx/workspace/monitor-importer/processed}
+ *  </pre>
+ *  @author Bronislav Krivoruchko
+ *  @since Java 1.8
+ *  @see Flowable
+ *  @see Model
+ */
 @Slf4j
 public class SourceScanner {
 
     private final Path sourceDir;
     private final Path processedDir;
+    private final Path rejectedDir;
     private final Unmarshaller unmarshaller;
+    
+    @Inject
+    private Validator validator;
     
     @Inject
     @SneakyThrows
     public SourceScanner(Properties properties, JAXBContext context) {
-        sourceDir = FileSystems.getDefault().getPath(properties.getProperty("source.dir"));
-        processedDir = FileSystems.getDefault().getPath(properties.getProperty("processed.dir"));
+        sourceDir = FileSystems.getDefault().getPath(properties.getProperty(SOURCE_DIR_PROPERTY));
+        processedDir = FileSystems.getDefault().getPath(properties.getProperty(PROCESSED_DIR_PROPERTY));
+        rejectedDir = FileSystems.getDefault().getPath(properties.getProperty(REJECTED_DIR_PROPERTY));
         unmarshaller = context.createUnmarshaller();
     }
-    
+
+    /**
+     * @return возвращает поток {@link Flowable} со считанными объектами модели.
+     * @see Model
+     */
     public Flowable<Model> scan() {
-        
-        return findFiles().subscribeOn(Schedulers.io())
-                .map(this::processFile)
-                .onErrorReturn(throwable -> {
-                    if (!(throwable instanceof UnmarshalException)) {
-                        log.error("Failed to parse XML", throwable);
-                    }
-                    return null;
-                });
+        return findFiles()
+                .subscribeOn(Schedulers.io())
+                .map(this::readModel)
+                .filter(model -> validator.validate(model).isEmpty());
     }
     
     private Flowable<Path> findFiles() {
-        return Flowable.create(e -> {
-            try {
-                Deque<Path> files = Files.find(sourceDir, 3, 
-                        (path, attrs) -> attrs.isRegularFile() && path.endsWith(".xml"))
-                        .collect(Collectors.toCollection(LinkedList::new));
-                while (!files.isEmpty() && !e.isCancelled()) {
-                    if (e.requested() == 0) {
-                        Thread.sleep(100);
-                        continue;
-                    }
-                    long counter = e.requested();
-                    while (counter > 0 && !e.isCancelled()) {
-                        e.onNext(files.poll());
-                    }
+        FlowableOnSubscribe<Path> source = emitter -> {
+            Deque<Path> files = Files.walk(sourceDir)
+                    .filter(path -> Files.isRegularFile(path) && 
+                            path.getFileName().toString().toLowerCase().endsWith(".xml"))
+                    .collect(Collectors.toCollection(LinkedList::new));
+            long counter = emitter.requested();
+            while (!files.isEmpty() && !emitter.isCancelled()) {
+                if (counter == 0) {
+                    Thread.sleep(100);
+                    counter = emitter.requested();
+                    continue;
                 }
-                e.onComplete();
-            } catch (IOException ex) {
-                e.onError(ex);
+                emitter.onNext(files.poll());
+                counter--;
             }
-        }, BackpressureStrategy.BUFFER);
+            emitter.onComplete();
+        };
+        return Flowable.create(source, BackpressureStrategy.BUFFER);
     }
     
-    private Model processFile(Path path) throws JAXBException, IOException {
-        Model model = readModel(path);
-        moveFileToProcessed(path);
+    private Model readModel(Path path) throws JAXBException, IOException {
+        JAXBElement<Model> element = unmarshaller.unmarshal(new StreamSource(path.toFile()), Model.class);
+        Model model = element.getValue();
+        if (validator.validate(model).isEmpty()) {
+            moveFileToProcessed(path);
+        } else {
+            moveFileToRejected(path);
+        }
         return model;
     }
     
-    private Model readModel(Path path) throws JAXBException {
-        JAXBElement<Model> element = unmarshaller.unmarshal(new StreamSource(path.toFile()), Model.class);
-        return element.getValue();
-    }
-    
     private void moveFileToProcessed(Path path) throws IOException {
-        Files.move(path, processedDir);
+        Files.move(path, processedDir.resolve(path.getFileName()));
     }
-    
+              
+    private void moveFileToRejected(Path path) throws IOException {
+        Files.move(path, rejectedDir.resolve(path.getFileName()));
+    }
+              
 }

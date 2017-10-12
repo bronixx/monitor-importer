@@ -6,6 +6,7 @@ import lombok.Setter;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Table;
 import javax.persistence.Temporal;
@@ -16,6 +17,7 @@ import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
+import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 import java.util.Date;
 
 @Getter
@@ -27,19 +29,20 @@ import java.util.Date;
 public class Model {
     
     @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "id")
-    @GeneratedValue
-    private long id;
+    private Long id;
     
-    @XmlElement
     @NotNull
+    @XmlElement(required = true)
     @Size(max = 1024)
     @Column(name = "content")
     private String content;
     
-    @XmlElement
     @NotNull
+    @XmlElement(required = true)
+    @XmlJavaTypeAdapter(DateAdapter.class)
     @Column(name = "creation_date")
     @Temporal(TemporalType.TIMESTAMP)
-    private Date creatonDate; 
+    private Date creationDate; 
 }

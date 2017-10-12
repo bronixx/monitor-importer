@@ -1,12 +1,12 @@
 package jobtask.importer;
 
 import com.google.inject.Inject;
+import com.google.inject.persist.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
 import javax.persistence.EntityManager;
-import javax.transaction.Transactional;
 
 @Slf4j
 public class EntityConsumer implements Subscriber<Model> {
@@ -36,6 +36,6 @@ public class EntityConsumer implements Subscriber<Model> {
 
     @Override
     public void onComplete() {
-        manager.flush();
+        manager.close();
     }
 }

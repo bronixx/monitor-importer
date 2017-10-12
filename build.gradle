@@ -15,16 +15,26 @@ repositories {
 dependencies {
     compile 'io.reactivex.rxjava2:rxjava:2.1.5'
     compile 'com.google.inject:guice:4.1.0'
+    compile 'com.google.inject.extensions:guice-persist:4.1.0:'
     compile 'org.postgresql:postgresql:9.4-1205-jdbc42'
     compile 'org.hibernate:hibernate-core:5.2.11.Final'
     compile 'org.hibernate:hibernate-validator:5.2.2.Final'
+    compile 'org.glassfish:javax.el:3.0.0'
     compile 'org.projectlombok:lombok:1.16.18'
     compile 'org.slf4j:slf4j-api:1.7.24'
     compile 'org.slf4j:slf4j-log4j12:1.7.21'
     testCompile 'junit:junit:4.12'
+    testCompile 'org.mockito:mockito-core:2.10.0'
+    testCompile 'org.hamcrest:hamcrest-all:1.3'
 }
 
 processResources {
+    def props = new Properties()
+    props.load file('build.properties').newDataInputStream()
+    filter ReplaceTokens, tokens: props
+}
+
+processTestResources {
     def props = new Properties()
     props.load file('build.properties').newDataInputStream()
     filter ReplaceTokens, tokens: props
