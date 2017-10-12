@@ -67,6 +67,7 @@ public abstract class TestBase extends AbstractModule {
         copyResource("/test-files/second-one.xml", scannerSourceDir);
         copyResource("/test-files/third-last.xml", scannerSourceDir);
         copyResource("/test-files/unsuitable.xml", scannerSourceDir);
+        copyResource("/test-files/sometext.txt", scannerSourceDir);
     }
 
     @After

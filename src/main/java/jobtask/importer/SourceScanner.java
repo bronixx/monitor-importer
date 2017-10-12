@@ -10,10 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 
 import javax.validation.Validator;
 import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBElement;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
-import javax.xml.transform.stream.StreamSource;
 import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -71,14 +69,13 @@ public class SourceScanner {
         return findFiles()
                 .subscribeOn(Schedulers.io())
                 .map(this::readModel)
-                .filter(model -> validator.validate(model).isEmpty());
+                .filter(model -> model != Model.EMPTY);
     }
     
     private Flowable<Path> findFiles() {
         FlowableOnSubscribe<Path> source = emitter -> {
             Deque<Path> files = Files.walk(sourceDir)
-                    .filter(path -> Files.isRegularFile(path) && 
-                            path.getFileName().toString().toLowerCase().endsWith(".xml"))
+                    .filter(path -> Files.isRegularFile(path))
                     .collect(Collectors.toCollection(LinkedList::new));
             long counter = emitter.requested();
             while (!files.isEmpty() && !emitter.isCancelled()) {
@@ -95,13 +92,19 @@ public class SourceScanner {
         return Flowable.create(source, BackpressureStrategy.BUFFER);
     }
     
-    private Model readModel(Path path) throws JAXBException, IOException {
-        JAXBElement<Model> element = unmarshaller.unmarshal(new StreamSource(path.toFile()), Model.class);
-        Model model = element.getValue();
-        if (validator.validate(model).isEmpty()) {
+    private Model readModel(Path path) throws IOException {
+        Model model;
+        try {
+            model = (Model) unmarshaller.unmarshal(path.toFile());
+        } catch (JAXBException e) {
+            model = Model.EMPTY;
+            
+        }
+        if (model != Model.EMPTY && validator.validate(model).isEmpty()) {
             moveFileToProcessed(path);
         } else {
             moveFileToRejected(path);
+            model = Model.EMPTY;
         }
         return model;
     }

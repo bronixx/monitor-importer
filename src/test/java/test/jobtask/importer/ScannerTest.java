@@ -42,6 +42,6 @@ public class ScannerTest extends TestBase {
 
         long filesRejected = Files.walk(scannerRejectedDir)
                 .filter(Files::isRegularFile).count();
-        assertThat("Unexpected number of files moved to the rejected files' folder", filesRejected, is(1L));
+        assertThat("Unexpected number of files moved to the rejected files' folder", filesRejected, is(2L));
     }
 }

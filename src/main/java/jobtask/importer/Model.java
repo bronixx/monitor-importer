@@ -28,6 +28,8 @@ import java.util.Date;
 @XmlAccessorType(XmlAccessType.NONE)
 public class Model {
     
+    public static final Model EMPTY = new Model();
+    
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "id")
